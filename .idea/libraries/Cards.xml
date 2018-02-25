@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Cards">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../DeckOCards/out/artifacts/Cards/Cards.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

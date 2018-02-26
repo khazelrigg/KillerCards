@@ -3,6 +3,7 @@ package kam.hazelrigg;
 import kam.hazelrigg.Cards.Card;
 import kam.hazelrigg.Cards.Deck;
 
+import java.util.Comparator;
 import java.util.Scanner;
 
 public class Player {
@@ -40,7 +41,15 @@ public class Player {
         return state;
     }
 
+    public boolean handContains(Card c) {
+        for (Card card : hand.getDeck()) {
+            if (card == c) return true;
+        }
+        return false;
+    }
+
     public Deck getHand() {
         return hand;
     }
+
 }

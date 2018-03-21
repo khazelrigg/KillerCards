@@ -197,12 +197,18 @@ public class Killer {
     }
 
     private void playPair() {
-        for (int i = 0; i < 2; i++) {
-            Card card = chooseCard();
-            if (card != null) {
-                playedDeck.addCard(card);
-                lastCard = card;
-            }
+        Card card1 = chooseCard();
+        if (card1 != null) {
+            playedDeck.addCard(card1);
+            lastCard = card1;
+        }
+        if (turnCount == 0)
+            return;
+
+        Card card2 = chooseCard();
+        if (card2 != null) {
+            playedDeck.addCard(card2);
+            lastCard = card2;
         }
     }
 
@@ -324,6 +330,7 @@ public class Killer {
     }
 
     private int[] getCardPairsIndices() {
+        System.out.println("hand pair indices");
         if (lastCard != null) {
             return findPairsIndex();
         }
@@ -384,6 +391,7 @@ public class Killer {
         int pairValue = lastCard.getValue();
         for (int i = 0; i < getHandSize(); i++) {
             if (whoPlaying.getHand().peek(i).getValue() == pairValue) {
+                System.out.println("adding " + i);
                 indices.add(i);
             }
         }

@@ -13,7 +13,7 @@ public class Killer {
 
     private Scanner scanner = new Scanner(System.in);
     private int turnCount = 0;
-    private int roundCount = 0;
+    private int roundCount = 1;
 
     enum lastState {SINGLE, PAIR, TRIPLE, RUN}
 
@@ -46,7 +46,7 @@ public class Killer {
         whoPlaying = players[0];
         while (true) {
             for (Player player : players) {
-                if (turnCount == 0 && roundCount == 0)
+                if (isFirstTurn())
                     takeFirstTurn();
 
                 if (player.getState() != Player.playerState.OUT && player.getState() != Player.playerState.PASS) {
@@ -77,9 +77,7 @@ public class Killer {
         turnCount = 0;
     }
 
-
     private void takeFirstTurn() {
-        roundCount++;
         whoPlaying = players[0];
         sortHand();
         printTurnInfo();
@@ -87,11 +85,8 @@ public class Killer {
 
         playedDeck.addCard(new Card(3, Card.Suit.SPADES));
         lastCard = playedDeck.peek(0);
-
         askRoundState();
-        turnCount++;
     }
-
 
     private void takeTurn(Player player) {
         whoPlaying = player;
@@ -105,7 +100,6 @@ public class Killer {
         printTurnInfo();
         playCards();
         turnCount++;
-
     }
 
     private void askRoundState() {
@@ -114,19 +108,20 @@ public class Killer {
         //TODO only show valid options & autoselect if only one option
         System.out.println("Options: (S)ingle\t(P)air\t(T)riple\t(R)un");
 
-        char i = askChar("sptr");
-        if (i == 's') {
+        char round = askChar("sptr");
+        if (round == 's') {
             roundState = lastState.SINGLE;
-        } else if (i == 'p') {
+        } else if (round == 'p') {
             roundState = lastState.PAIR;
-        } else if (i == 't') {
+        } else if (round == 't') {
             roundState = lastState.TRIPLE;
-        } else if (i == 'r') {
+        } else if (round == 'r') {
             roundState = lastState.RUN;
             runLen = getRunLength();
         }
 
     }
+
 
     private void getFirstPlayer() {
         Player first = players[0];
@@ -189,6 +184,7 @@ public class Killer {
     }
 
     private void playSingle() {
+        if (isFirstTurn()) return;
         Card playerCard = chooseCard();
         if (playerCard != null) {
             lastCard = playerCard;
@@ -295,12 +291,11 @@ public class Killer {
         return available.stream().mapToInt(i -> i).toArray();
     }
 
-
     int promptForCard() {
         int enteredNum;
         int[] availableCards = getAvailableCards();
         while (true) {
-            if (!(roundCount == 1 && turnCount == 1) || turnCount != 0 && roundCount > 1) {
+            if (!isFirstTurn() || turnCount != 0 && roundCount > 1) {
                 System.out.println(getStringAvailable() + " (99) Pass");
             } else {
                 System.out.println(getStringAvailable());
@@ -308,7 +303,7 @@ public class Killer {
             enteredNum = askInt("> ");
             scanner.nextLine();
 
-            if (enteredNum == 99 && turnCount == 0) {
+            if (enteredNum == 99 && isFirstTurn()) {
                 System.out.println("Can't pass on the first turn");
                 System.out.println(getStringAvailable());
             } else if (enteredNum == 99 || enteredNum <= availableCards.length) {
@@ -498,7 +493,6 @@ public class Killer {
         skips++;
     }
 
-
     boolean hasPairs() {
         return lastCard == null || getAvailableCards().length >= 2;
     }
@@ -578,6 +572,10 @@ public class Killer {
     public void sortHand() {
         //https://stackoverflow.com/questions/2784514/sort-arraylist-of-custom-objects-by-property#2784576
         whoPlaying.getHand().getDeck().sort(Comparator.comparing(Card::getValue));
+    }
+
+    private boolean isFirstTurn() {
+        return roundCount == 1 && turnCount == 0;
     }
 
 }

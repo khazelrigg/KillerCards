@@ -10,19 +10,17 @@ import java.util.Scanner;
 
 
 public class Killer {
-
     private Scanner scanner = new Scanner(System.in);
     private int turnCount = 0;
     private int roundCount = 0;
 
     enum lastState {SINGLE, PAIR, TRIPLE, RUN}
 
-    protected lastState roundState = lastState.SINGLE;
+    private lastState roundState = lastState.SINGLE;
 
     private Player[] players = {new Player(1), new Player(2), new Player(3), new Player(4)};
     private Deck playedDeck = new Deck(0);
     private Card lastCard;
-    private int runLen = 0;
     private Player whoPlaying;
     private int skips = 0;
 
@@ -95,6 +93,7 @@ public class Killer {
 
     private void takeTurn(Player player) {
         whoPlaying = player;
+        sortHand();
 
         boolean timeForNewRound = checkSkips();
         if (timeForNewRound) {
@@ -114,16 +113,20 @@ public class Killer {
         //TODO only show valid options & autoselect if only one option
         System.out.println("Options: (S)ingle\t(P)air\t(T)riple\t(R)un");
 
-        char i = askChar("sptr");
-        if (i == 's') {
-            roundState = lastState.SINGLE;
-        } else if (i == 'p') {
-            roundState = lastState.PAIR;
-        } else if (i == 't') {
-            roundState = lastState.TRIPLE;
-        } else if (i == 'r') {
-            roundState = lastState.RUN;
-            runLen = getRunLength();
+        char roundSelection = promptRoundSelection();
+        switch (roundSelection) {
+            case 's':
+                roundState = lastState.SINGLE;
+                break;
+            case 'p':
+                roundState = lastState.PAIR;
+                break;
+            case 't':
+                roundState = lastState.TRIPLE;
+                break;
+            case 'r':
+                roundState = lastState.RUN;
+                break;
         }
 
     }
@@ -145,23 +148,7 @@ public class Killer {
         setPlayerNums();
     }
 
-    int getRunLength() {
-        while (true) {
-            int wants = askInt("How many cards do you want to play in your run: ");
-            scanner.nextLine();
-
-            if (wants > 0 && wants <= getMaxRun()) {
-                return wants;
-            }
-        }
-
-    }
-
-    int getMaxRun() {
-        return whoPlaying.getHand().getSize();
-    }
-
-    void printTurnInfo() {
+    private void printTurnInfo() {
         System.out.println("\n=====================[ Turn " + (turnCount + 1) + " - (P" + whoPlaying.getPlayerNum() + ") ]=====================");
         if (playedDeck.getSize() > 0) {
             System.out.println("Played Last: " + getDeckString(playedDeck) + "\t\t | " + roundState);
@@ -231,8 +218,10 @@ public class Killer {
      *
      * @return Card they choose
      */
-    protected Card chooseCard() {
-
+    private Card chooseCard() {
+        if (whoPlaying.getState() == Player.playerState.PASS) {
+            return null;
+        }
 
         int[] availableCards = getAvailableCards();
 
@@ -267,18 +256,20 @@ public class Killer {
         return null;
     }
 
+
     /**
      * Get a list of card indices that the player can play
      *
      * @return int array with indices
      */
     private int[] getAvailableCards() {
-        ArrayList<Integer> available = new ArrayList<>();
+        ArrayList<Integer> pairIndices = new ArrayList<>();
 
         if (roundState == lastState.PAIR) {
-            return getCardPairsIndices();
+            return getCardPairIndices();
         }
 
+        // For playing single cards
         for (int i = 0; i < getHandSize(); i++) {
             Card c = getPlayerCard(i);
             if (roundState == lastState.TRIPLE) {
@@ -287,16 +278,30 @@ public class Killer {
                 // Check if c is a greater card
                 boolean isBigger = compareCards(c, lastCard);
                 if (isBigger) {
-                    available.add(i);
+                    pairIndices.add(i);
                 }
             }
         }
 
-        return available.stream().mapToInt(i -> i).toArray();
+        return pairIndices.stream().mapToInt(i -> i).toArray();
+    }
+
+    private int[] getCardPairIndices() {
+        ArrayList<Integer> pairIndices = new ArrayList<>();
+        ArrayList<Integer> pairValues = getPairValues();
+
+        for (int index = 0; index < whoPlaying.getHand().getSize(); index++) {
+            int currentValue = whoPlaying.getHand().peek(index).getValue();
+
+            if (pairValues.contains(currentValue)) {
+                pairIndices.add(index);
+            }
+        }
+        return pairIndices.stream().mapToInt(i -> i).toArray();
     }
 
 
-    int promptForCard() {
+    private int promptForCard() {
         int enteredNum;
         int[] availableCards = getAvailableCards();
         while (true) {
@@ -305,7 +310,7 @@ public class Killer {
             } else {
                 System.out.println(getStringAvailable());
             }
-            enteredNum = askInt("> ");
+            enteredNum = askInt();
             scanner.nextLine();
 
             if (enteredNum == 99 && turnCount == 0) {
@@ -321,47 +326,30 @@ public class Killer {
         return enteredNum;
     }
 
-    String getStringAvailable() {
-        StringBuilder txt = new StringBuilder("What card would you like to play\n");
-        for (int i = 0; i < getAvailableCards().length; i++) {
-            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(getAvailableCards()[i]).toString(true)).append("\t\t");
-        }
-        return txt.toString();
-    }
-
-    private int[] getCardPairsIndices() {
-        System.out.println("hand pair indices");
-        if (lastCard != null) {
-            return findPairsIndex();
-        }
-
-        ArrayList<Integer> pairsPossible = new ArrayList<>();
-        whoPlaying.getHand().getDeck().forEach(e -> pairsPossible.add(e.getValue()));
-        Collections.sort(pairsPossible);
-
-        for (int i = 0; i < pairsPossible.size() - 1; i++) {
-            if (!pairsPossible.get(i).equals(pairsPossible.get(i + 1))) {
-                pairsPossible.remove(i);
-                i--;
-            }
-        }
-        pairsPossible.remove(pairsPossible.size() - 1);
+    private ArrayList<Integer> getPairValues() {
 
         ArrayList<Integer> pairIndices = new ArrayList<>();
-        for (int i = 0; i < getHandSize(); i++) {
-            int cardVal = getPlayerCard(i).getValue();
-            if (pairsPossible.contains(cardVal) && !pairIndices.contains(cardVal)) {
-                pairIndices.add(i);
+        for (Card c : whoPlaying.getCards()) {
+            pairIndices.add(c.getValue());
+        }
+        Collections.sort(pairIndices);
+
+
+        ArrayList<Integer> canPair = new ArrayList<>();
+
+        for (int i = 0; i < pairIndices.size() - 1; i++) {
+            if (pairIndices.get(i).equals(pairIndices.get(i + 1))) {
+                canPair.add(pairIndices.get(i));
             }
         }
 
-        return pairIndices.stream().mapToInt(i -> i).toArray();
+        return canPair;
     }
-
+    
     private int[] getTriplePairIndices() {
 
         if (lastCard != null) {
-            return findPairsIndex();
+            return findMatchingPairs();
         }
 
         ArrayList<Integer> triples = new ArrayList<>();
@@ -386,12 +374,12 @@ public class Killer {
         return pairIndices.stream().mapToInt(i -> i).toArray();
     }
 
-    private int[] findPairsIndex() {
+    private int[] findMatchingPairs() {
         ArrayList<Integer> indices = new ArrayList<>();
+
         int pairValue = lastCard.getValue();
         for (int i = 0; i < getHandSize(); i++) {
             if (whoPlaying.getHand().peek(i).getValue() == pairValue) {
-                System.out.println("adding " + i);
                 indices.add(i);
             }
         }
@@ -442,12 +430,12 @@ public class Killer {
         }
     }
 
-    private int askInt(String msg) {
+    private int askInt() {
         int number;
         do {
-            System.out.print(msg + " ");
+            System.out.print("> ");
             while (!scanner.hasNextInt()) {
-                System.out.print("retry: " + msg + " ");
+                System.out.print("retry: > ");
                 scanner.next();
             }
             number = scanner.nextInt();
@@ -455,7 +443,8 @@ public class Killer {
         return number;
     }
 
-    private char askChar(String acceptable) {
+    private char promptRoundSelection() {
+        String acceptable = "sptr";
         while (true) {
             System.out.print("> ");
             String response = scanner.nextLine().toLowerCase();
@@ -466,14 +455,6 @@ public class Killer {
                 System.out.print("retry: ");
             }
         }
-    }
-
-    private boolean askYesNo(String msg) {
-        System.out.print(msg + " [y/n]\n" + "> ");
-        String response = scanner.nextLine();
-        if (response.length() > 0 && response.toLowerCase().charAt(0) == 'y')
-            return true;
-        return false;
     }
 
     private boolean askVerifyTurnSelection(int num) {
@@ -492,22 +473,28 @@ public class Killer {
         return doubleCheck;
     }
 
-    void skipPlayer() {
+    private boolean askYesNo(String msg) {
+        System.out.print(msg + " [y/n]\n" + "> ");
+        String response = scanner.nextLine();
+        return response.length() > 0 && response.toLowerCase().charAt(0) == 'y';
+    }
+
+    private void skipPlayer() {
         System.out.println("Passing...");
         whoPlaying.setState(Player.playerState.PASS);
         skips++;
     }
 
 
-    boolean hasPairs() {
+    private boolean hasPairs() {
         return lastCard == null || getAvailableCards().length >= 2;
     }
 
-    boolean hasTriples() {
+    private boolean hasTriples() {
         return getTriplePairIndices().length > 2;
     }
 
-    protected String getDeckString(Deck d) {
+    private String getDeckString(Deck d) {
         StringBuilder sb = new StringBuilder();
         for (Card c : d.getDeck()) {
             sb.append(c.toString(true)).append(" ");
@@ -515,7 +502,7 @@ public class Killer {
         return sb.toString();
     }
 
-    void clearPlayerStates() {
+    private void clearPlayerStates() {
         for (Player p : players) {
             if (p.getState() != Player.playerState.OUT) {
                 p.setState(Player.playerState.NORMAL);
@@ -524,46 +511,32 @@ public class Killer {
 
     }
 
-    void setPlayerNums() {
+    private void setPlayerNums() {
         for (int i = 0; i < 4; i++) {
             players[i].setPlayerNum(i + 1);
         }
     }
 
-    boolean isGameOver() {
+    private boolean isGameOver() {
         for (Player p : players) {
             if (p.getHand().getSize() < 1) return true;
         }
         return false;
     }
 
-    boolean checkInstantWin() {
-        if (has4twos()) return true;
-        return false;
-    }
-
-    boolean has4twos() {
-        for (Card.Suit suit : Card.Suit.values()) {
-            if (!whoPlaying.handContains(new Card(2, suit))) {
-                return false;
-            }
+    private String getStringAvailable() {
+        StringBuilder txt = new StringBuilder("What card would you like to play\n");
+        for (int i = 0; i < getAvailableCards().length; i++) {
+            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(getAvailableCards()[i]).toString(true)).append("\t");
         }
-        return true;
+        return txt.toString();
     }
 
-    void setLastCard(Card c) {
-        lastCard = c;
-    }
-
-    void playCards(Card c) {
-        playedDeck.addCard(c);
-    }
-
-    Card getPlayerCard(int i) {
+    private Card getPlayerCard(int i) {
         return whoPlaying.getHand().peek(i);
     }
 
-    int getHandSize() {
+    private int getHandSize() {
         return whoPlaying.getHand().getSize();
     }
 
@@ -571,11 +544,7 @@ public class Killer {
         return skips == 3;
     }
 
-    public lastState getRoundState() {
-        return roundState;
-    }
-
-    public void sortHand() {
+    private void sortHand() {
         //https://stackoverflow.com/questions/2784514/sort-arraylist-of-custom-objects-by-property#2784576
         whoPlaying.getHand().getDeck().sort(Comparator.comparing(Card::getValue));
     }

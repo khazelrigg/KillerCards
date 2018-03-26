@@ -3,6 +3,7 @@ package kam.hazelrigg;
 import kam.hazelrigg.Cards.Card;
 import kam.hazelrigg.Cards.Deck;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Scanner;
 
@@ -15,7 +16,7 @@ public class Player {
     Player(int i) {
         playerNum = i;
     }
-
+            
     @Override
     public String toString() {
         return hand.toString();
@@ -50,6 +51,10 @@ public class Player {
 
     public Deck getHand() {
         return hand;
+    }
+
+    public ArrayList<Card> getCards() {
+        return hand.getDeck();
     }
 
 }

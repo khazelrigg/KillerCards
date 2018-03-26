@@ -105,23 +105,28 @@ public class Killer {
     private void askRoundState() {
         System.out.println("\n=======================[ Round " + (roundCount) + " ]=======================");
         System.out.println("Hand: " + getDeckString(whoPlaying.getHand()) + "\t\t | Size: " + whoPlaying.getHand().getSize());
-        //TODO only show valid options & autoselect if only one option
+        /*
+        TODO only display valid options
+         */
         System.out.println("Options: (S)ingle\t(P)air\t(T)riple\t(R)un");
 
-        char round = askChar("sptr");
-        if (round == 's') {
-            roundState = lastState.SINGLE;
-        } else if (round == 'p') {
-            roundState = lastState.PAIR;
-        } else if (round == 't') {
-            roundState = lastState.TRIPLE;
-        } else if (round == 'r') {
-            roundState = lastState.RUN;
-            runLen = getRunLength();
+        // Accept input from the player to set round state
+        switch (askChar("sptr")) {
+            case 's':
+                roundState = lastState.SINGLE;
+                break;
+            case 'p':
+                roundState = lastState.PAIR;
+                break;
+            case 't':
+                roundState = lastState.TRIPLE;
+                break;
+            case 'r':
+                roundState = lastState.RUN;
+                runLen = getRunLength();
+                break;
         }
-
     }
-
 
     private void getFirstPlayer() {
         Player first = players[0];
@@ -219,7 +224,7 @@ public class Killer {
     }
 
     private void playRun() {
-
+        System.out.println("I don't do anything");
     }
 
     /**
@@ -228,31 +233,16 @@ public class Killer {
      * @return Card they choose
      */
     protected Card chooseCard() {
-
-
-        int[] availableCards = getAvailableCards();
-
-        switch (roundState) {
-            case PAIR:
-                if (!hasPairs()) {
-                    skipPlayer();
-                    return null;
-                }
-                break;
-            case TRIPLE:
-                if (!hasTriples()) {
-                    skipPlayer();
-                    return null;
-                }
-                break;
-            default:
-                if (availableCards.length < 1) {
-                    skipPlayer();
-                    return null;
-                }
+        if (!canPlayCards()) {
+            skipPlayer();
+        }
+        if (whoPlaying.getState() == Player.playerState.PASS) {
+            return null;
         }
 
+        int[] availableCards = getAvailableCards();
         int enteredNum = promptForCard();
+
         boolean isSure = askVerifyTurnSelection(enteredNum);
 
         if (isSure) {
@@ -261,6 +251,19 @@ public class Killer {
             chooseCard();
         }
         return null;
+    }
+
+    boolean canPlayCards() {
+        switch (roundState) {
+            case SINGLE:
+                return  getAvailableCards().length > 0;
+            case PAIR:
+                return hasPairs();
+            case TRIPLE:
+                return hasTriples();
+            default:
+                return getAvailableCards().length > 2;
+        }
     }
 
     /**
@@ -325,7 +328,6 @@ public class Killer {
     }
 
     private int[] getCardPairsIndices() {
-        System.out.println("hand pair indices");
         if (lastCard != null) {
             return findPairsIndex();
         }
@@ -391,50 +393,6 @@ public class Killer {
             }
         }
         return indices.stream().mapToInt(i -> i).toArray();
-    }
-
-    private boolean compareCards(Card c, Card c2) {
-        if (c2 == null) {
-            return true;
-        }
-
-        if (getValue(c) == getValue(c2)) {
-            return getSuitValue(c) > getSuitValue(c2);
-        }
-
-        return getValue(c) > getValue(c2);
-    }
-
-    private int getSuitValue(Card card) {
-        switch (card.getSuit()) {
-            case HEARTS:
-                return 4;
-            case DIAMONDS:
-                return 3;
-            case CLUBS:
-                return 2;
-            case SPADES:
-                return 1;
-            default:
-                return 0;
-        }
-    }
-
-    private int getValue(Card card) {
-        switch (card.getValue()) {
-            case 2:
-                return 13;
-            case 1:
-                return 12;
-            case 13:
-                return 11;
-            case 12:
-                return 10;
-            case 11:
-                return 9;
-            default:
-                return card.getValue();
-        }
     }
 
     private int askInt(String msg) {
@@ -511,6 +469,7 @@ public class Killer {
 
     void clearPlayerStates() {
         for (Player p : players) {
+            // Players that are out are unable to continue playing, do not change their state back to normal
             if (p.getState() != Player.playerState.OUT) {
                 p.setState(Player.playerState.NORMAL);
             }
@@ -567,6 +526,50 @@ public class Killer {
 
     public lastState getRoundState() {
         return roundState;
+    }
+
+    private boolean compareCards(Card c, Card c2) {
+        if (c2 == null) {
+            return true;
+        }
+
+        if (getValue(c) == getValue(c2)) {
+            return getSuitValue(c) > getSuitValue(c2);
+        }
+
+        return getValue(c) > getValue(c2);
+    }
+
+    private int getSuitValue(Card card) {
+        switch (card.getSuit()) {
+            case HEARTS:
+                return 4;
+            case DIAMONDS:
+                return 3;
+            case CLUBS:
+                return 2;
+            case SPADES:
+                return 1;
+            default:
+                return 0;
+        }
+    }
+
+    private int getValue(Card card) {
+        switch (card.getValue()) {
+            case 2:
+                return 13;
+            case 1:
+                return 12;
+            case 13:
+                return 11;
+            case 12:
+                return 10;
+            case 11:
+                return 9;
+            default:
+                return card.getValue();
+        }
     }
 
     public void sortHand() {

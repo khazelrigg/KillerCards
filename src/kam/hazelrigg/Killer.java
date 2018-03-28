@@ -3,10 +3,7 @@ package kam.hazelrigg;
 import kam.hazelrigg.Cards.Card;
 import kam.hazelrigg.Cards.Deck;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Scanner;
+import java.util.*;
 
 
 public class Killer {
@@ -186,8 +183,6 @@ public class Killer {
             playedDeck.addCard(card1);
             lastCard = card1;
         }
-        if (turnCount == 0)
-            return;
 
         Card card2 = chooseCard();
         if (card2 != null) {
@@ -248,6 +243,32 @@ public class Killer {
         }
     }
 
+
+    int promptForCard() {
+        int enteredNum;
+        int[] availableCards = getAvailableCards();
+        while (true) {
+            if (!isFirstTurn() || turnCount != 0 && roundCount > 1) {
+                System.out.println(getStringAvailable() + " (99) Pass");
+            } else {
+                System.out.println(getStringAvailable());
+            }
+            enteredNum = askInt();
+            scanner.nextLine();
+
+            if (enteredNum == 99 && isFirstTurn()) {
+                System.out.println("Can't pass on the first turn");
+                System.out.println(getStringAvailable());
+            } else if (enteredNum == 99 || enteredNum <= availableCards.length) {
+                break;
+            } else {
+                System.out.println("Try that again");
+                System.out.println(getStringAvailable());
+            }
+        }
+        return enteredNum;
+    }
+
     /**
      * Get a list of card indices that the player can play
      *
@@ -276,100 +297,48 @@ public class Killer {
 
         return pairIndices.stream().mapToInt(i -> i).toArray();
     }
+
     private int[] getCardPairIndices() {
-        ArrayList<Integer> pairIndices = new ArrayList<>();
-        ArrayList<Integer> pairValues = getPairValues();
+        ArrayList<Integer> pairValues = getValues(2);
+        return getIndicesOfValues(pairValues);
+    }
+    
+    private int[] getTriplePairIndices() {
+        ArrayList<Integer> tripleValues = getValues(3);
+        return  getIndicesOfValues(tripleValues);
+    }
+
+    private ArrayList<Integer> getValues(int n) {
+        HashMap<Integer, Integer> valueCount = new HashMap<>();
+        // Populate hashmap with each values number of occurences
+        for (Card card : whoPlaying.getCards()) {
+            int val = card.getValue();
+            if (valueCount.containsKey(val)) {
+                valueCount.put(val, valueCount.get(val) + 1);
+            } else {
+                valueCount.put(val, 1);
+            }
+        }
+
+        // Add values with at least n occurences
+        ArrayList<Integer> acceptableValues = new ArrayList<>();
+        valueCount.forEach((k, v) -> {
+            if (v >= n) {
+                acceptableValues.add(k);
+            }
+        });
+        return acceptableValues;
+    }
+
+    private int[] getIndicesOfValues(ArrayList<Integer> values) {
+        ArrayList<Integer> indices = new ArrayList<>();
 
         for (int index = 0; index < whoPlaying.getHand().getSize(); index++) {
             int currentValue = whoPlaying.getHand().peek(index).getValue();
 
-            if (pairValues.contains(currentValue)) {
-                pairIndices.add(index);
-            }
-        }
-        return pairIndices.stream().mapToInt(i -> i).toArray();
-    }
-
-    int promptForCard() {
-        int enteredNum;
-        int[] availableCards = getAvailableCards();
-        while (true) {
-            if (!isFirstTurn() || turnCount != 0 && roundCount > 1) {
-                System.out.println(getStringAvailable() + " (99) Pass");
-            } else {
-                System.out.println(getStringAvailable());
-            }
-            enteredNum = askInt();
-            scanner.nextLine();
-
-            if (enteredNum == 99 && isFirstTurn()) {
-                System.out.println("Can't pass on the first turn");
-                System.out.println(getStringAvailable());
-            } else if (enteredNum == 99 || enteredNum <= availableCards.length) {
-                break;
-            } else {
-                System.out.println("Try that again");
-                System.out.println(getStringAvailable());
-            }
-        }
-        return enteredNum;
-    }
-
-    private ArrayList<Integer> getPairValues() {
-
-        ArrayList<Integer> pairIndices = new ArrayList<>();
-        for (Card c : whoPlaying.getCards()) {
-            pairIndices.add(c.getValue());
-        }
-        Collections.sort(pairIndices);
-
-
-        ArrayList<Integer> canPair = new ArrayList<>();
-
-        for (int i = 0; i < pairIndices.size() - 1; i++) {
-            if (pairIndices.get(i).equals(pairIndices.get(i + 1))) {
-                canPair.add(pairIndices.get(i));
-            }
-        }
-
-        return canPair;
-    }
-
-    private int[] getTriplePairIndices() {
-
-        if (lastCard != null) {
-            return findMatchingPairs();
-        }
-
-        ArrayList<Integer> triples = new ArrayList<>();
-        whoPlaying.getHand().getDeck().forEach(e -> triples.add(e.getValue()));
-        Collections.sort(triples);
-
-        for (int i = 0; i < triples.size() - 2; i++) {
-            if (triples.get(i).equals(triples.get(i + 1)) && !triples.get(i).equals(triples.get(i + 2))) {
-                triples.remove(i);
-            }
-        }
-        triples.remove(triples.size() - 1);
-
-        ArrayList<Integer> pairIndices = new ArrayList<>();
-        for (int i = 0; i < getHandSize(); i++) {
-            int cardVal = getPlayerCard(i).getValue();
-            if (triples.contains(cardVal)) {
-                pairIndices.add(i);
-            }
-        }
-
-        return pairIndices.stream().mapToInt(i -> i).toArray();
-    }
-
-    private int[] findMatchingPairs() {
-        ArrayList<Integer> indices = new ArrayList<>();
-
-        int pairValue = lastCard.getValue();
-        for (int i = 0; i < getHandSize(); i++) {
-            if (whoPlaying.getHand().peek(i).getValue() == pairValue) {
-                indices.add(i);
+            if (values.contains(currentValue)) {
+                System.out.println("Found " + currentValue);
+                indices.add(index);
             }
         }
         return indices.stream().mapToInt(i -> i).toArray();

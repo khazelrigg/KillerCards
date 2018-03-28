@@ -87,8 +87,7 @@ public class Killer {
         whoPlaying = player;
         sortHand();
 
-        boolean timeForNewRound = checkSkips();
-        if (timeForNewRound) {
+        if (skips >= 3) {
             nextRound();
             return;
         }
@@ -170,7 +169,8 @@ public class Killer {
 
     private void playSingle() {
         if (isFirstTurn()) return;
-        Card playerCard = chooseCard();
+        int[] availableCards = getAvailableCards();
+        Card playerCard = chooseCard(availableCards);
         if (playerCard != null) {
             lastCard = playerCard;
             playedDeck.addCard(playerCard);
@@ -178,13 +178,16 @@ public class Killer {
     }
 
     private void playPair() {
-        Card card1 = chooseCard();
+        //TODO redo this section to allow selection of a value opposed to cards
+        int[] availableCards = getAvailableCards();
+        System.out.println(Arrays.toString(availableCards));
+        Card card1 = chooseCard(availableCards);
         if (card1 != null) {
             playedDeck.addCard(card1);
             lastCard = card1;
         }
 
-        Card card2 = chooseCard();
+        Card card2 = chooseCard(availableCards);
         if (card2 != null) {
             playedDeck.addCard(card2);
             lastCard = card2;
@@ -192,8 +195,9 @@ public class Killer {
     }
 
     private void playTriple() {
+        int[] availableCards = getAvailableCards();
         for (int i = 0; i < 3; i++) {
-            Card card = chooseCard();
+            Card card = chooseCard(availableCards);
             if (card != null) {
                 playedDeck.addCard(card);
                 lastCard = card;
@@ -210,43 +214,25 @@ public class Killer {
      *
      * @return Card they choose
      */
-    protected Card chooseCard() {
-        if (!canPlayCards()) {
-            skipPlayer();
-        }
+    protected Card chooseCard(int[] available) {
+        System.out.println(Arrays.toString(available));
         if (whoPlaying.getState() == Player.playerState.PASS) {
             return null;
         }
 
-        int[] availableCards = getAvailableCards();
-        int enteredNum = promptForCard();
+        int enteredNum = promptForCard(available);
         boolean isSure = askVerifyTurnSelection(enteredNum);
 
         if (isSure) {
-            return whoPlaying.getHand().drawCard(availableCards[enteredNum - 1]);
+            return whoPlaying.getHand().drawCard(available[enteredNum - 1]);
         } else {
-            chooseCard();
+            chooseCard(available);
         }
         return null;
     }
 
-    boolean canPlayCards() {
-        switch (roundState) {
-            case SINGLE:
-                return  getAvailableCards().length > 0;
-            case PAIR:
-                return hasPairs();
-            case TRIPLE:
-                return hasTriples();
-            default:
-                return getAvailableCards().length > 2;
-        }
-    }
-
-
-    int promptForCard() {
+    int promptForCard(int[] available) {
         int enteredNum;
-        int[] availableCards = getAvailableCards();
         while (true) {
             if (!isFirstTurn() || turnCount != 0 && roundCount > 1) {
                 System.out.println(getStringAvailable() + " (99) Pass");
@@ -259,7 +245,7 @@ public class Killer {
             if (enteredNum == 99 && isFirstTurn()) {
                 System.out.println("Can't pass on the first turn");
                 System.out.println(getStringAvailable());
-            } else if (enteredNum == 99 || enteredNum <= availableCards.length) {
+            } else if (enteredNum == 99 || enteredNum <= available.length) {
                 break;
             } else {
                 System.out.println("Try that again");
@@ -267,6 +253,16 @@ public class Killer {
             }
         }
         return enteredNum;
+    }
+
+
+    private String getStringAvailable() {
+        //TODO remove useage of getAvailable
+        StringBuilder txt = new StringBuilder("What card would you like to play\n");
+        for (int i = 0; i < getAvailableCards().length; i++) {
+            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(getAvailableCards()[i]).toString(true)).append("\t");
+        }
+        return txt.toString();
     }
 
     /**
@@ -326,7 +322,7 @@ public class Killer {
             }
         }
 
-        // Add values with at least n occurences
+        // Add valid values with at least n occurences
         ArrayList<Integer> acceptableValues = new ArrayList<>();
         valueCount.forEach((k, v) -> {
             if (v >= occurences) {
@@ -442,26 +438,18 @@ public class Killer {
         return response.length() > 0 && response.toLowerCase().charAt(0) == 'y';
     }
 
-    private void skipPlayer() {
-        System.out.println("Passing...");
-        whoPlaying.setState(Player.playerState.PASS);
-        skips++;
-    }
-
-    boolean hasPairs() {
-        return lastCard == null || getAvailableCards().length >= 2;
-    }
-
-    private boolean hasTriples() {
-        return getTriplePairIndices().length > 2;
-    }
-
     private String getDeckString(Deck d) {
         StringBuilder sb = new StringBuilder();
         for (Card c : d.getDeck()) {
             sb.append(c.toString(true)).append(" ");
         }
         return sb.toString();
+    }
+
+    private void skipPlayer() {
+        System.out.println("Passing...");
+        whoPlaying.setState(Player.playerState.PASS);
+        skips++;
     }
 
     private void clearPlayerStates() {
@@ -487,24 +475,12 @@ public class Killer {
         return false;
     }
 
-    private String getStringAvailable() {
-        StringBuilder txt = new StringBuilder("What card would you like to play\n");
-        for (int i = 0; i < getAvailableCards().length; i++) {
-            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(getAvailableCards()[i]).toString(true)).append("\t");
-        }
-        return txt.toString();
-    }
-
     private Card getPlayerCard(int i) {
         return whoPlaying.getHand().peek(i);
     }
 
     private int getHandSize() {
         return whoPlaying.getHand().getSize();
-    }
-
-    private boolean checkSkips() {
-        return skips == 3;
     }
 
     private void sortHand() {

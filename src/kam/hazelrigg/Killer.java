@@ -302,13 +302,19 @@ public class Killer {
         ArrayList<Integer> pairValues = getValues(2);
         return getIndicesOfValues(pairValues);
     }
-    
+
     private int[] getTriplePairIndices() {
         ArrayList<Integer> tripleValues = getValues(3);
         return  getIndicesOfValues(tripleValues);
     }
 
-    private ArrayList<Integer> getValues(int n) {
+    /**
+     * Finds values in the players hand that appear at least n times
+     * @param occurences Minimum occurences that a value must appear in players hand
+     * @return List of values that are acceptable
+     */
+    private ArrayList<Integer> getValues(int occurences) {
+        //TODO make sure this also checks that card values are greater than last played card
         HashMap<Integer, Integer> valueCount = new HashMap<>();
         // Populate hashmap with each values number of occurences
         for (Card card : whoPlaying.getCards()) {
@@ -323,7 +329,7 @@ public class Killer {
         // Add values with at least n occurences
         ArrayList<Integer> acceptableValues = new ArrayList<>();
         valueCount.forEach((k, v) -> {
-            if (v >= n) {
+            if (v >= occurences) {
                 acceptableValues.add(k);
             }
         });
@@ -337,7 +343,6 @@ public class Killer {
             int currentValue = whoPlaying.getHand().peek(index).getValue();
 
             if (values.contains(currentValue)) {
-                System.out.println("Found " + currentValue);
                 indices.add(index);
             }
         }

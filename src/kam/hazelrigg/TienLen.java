@@ -6,22 +6,21 @@ import kam.hazelrigg.Cards.Deck;
 import java.util.*;
 
 
-public class Killer {
+public class TienLen {
     private Scanner scanner = new Scanner(System.in);
     private int turnCount = 0;
     private int roundCount = 1;
 
     enum lastState {SINGLE, PAIR, TRIPLE, RUN}
-
-    private lastState roundState = lastState.SINGLE;
+    protected lastState roundState = lastState.SINGLE;
 
     private Player[] players = {new Player(1), new Player(2), new Player(3), new Player(4)};
     private Deck playedDeck = new Deck(0);
-    private Card lastCard;
-    private Player whoPlaying;
+    protected Card lastCard;
+    protected Player whoPlaying;
     private int skips = 0;
 
-    Killer() {
+    TienLen() {
         dealCards();
     }
 
@@ -178,15 +177,26 @@ public class Killer {
     }
 
     private void playPair() {
-        //TODO redo this section to allow selection of a value opposed to cards
+        //TODO redo this section to allow selection of a value opposed to selecting individual cards
         int[] availableCards = getAvailableCards();
-        System.out.println(Arrays.toString(availableCards));
+        if (isFirstTurn()) {
+            availableCards = getIndicesOfValues(3);
+            Card card = chooseCard(availableCards);
+            if (card != null) {
+                playedDeck.addCard(card);
+                lastCard = card;
+            }
+            return;
+        }
+
         Card card1 = chooseCard(availableCards);
         if (card1 != null) {
             playedDeck.addCard(card1);
             lastCard = card1;
         }
 
+        availableCards = getIndicesOfValues(card1.getValue());
+        // card2 is card with same value
         Card card2 = chooseCard(availableCards);
         if (card2 != null) {
             playedDeck.addCard(card2);
@@ -196,6 +206,7 @@ public class Killer {
 
     private void playTriple() {
         int[] availableCards = getAvailableCards();
+        System.out.println("TRIPLES AVAILABLE - " + Arrays.toString(availableCards));
         for (int i = 0; i < 3; i++) {
             Card card = chooseCard(availableCards);
             if (card != null) {
@@ -214,9 +225,12 @@ public class Killer {
      *
      * @return Card they choose
      */
-    protected Card chooseCard(int[] available) {
-        System.out.println(Arrays.toString(available));
+    private Card chooseCard(int[] available) {
         if (whoPlaying.getState() == Player.playerState.PASS) {
+            return null;
+        }
+        if (available.length < 1) {
+            skipPlayer();
             return null;
         }
 
@@ -231,36 +245,37 @@ public class Killer {
         return null;
     }
 
-    int promptForCard(int[] available) {
+    private int promptForCard(int[] available) {
         int enteredNum;
+
         while (true) {
             if (!isFirstTurn() || turnCount != 0 && roundCount > 1) {
-                System.out.println(getStringAvailable() + " (99) Pass");
+                System.out.println(getStringAvailable(available) + " (99) Pass");
             } else {
-                System.out.println(getStringAvailable());
+                System.out.println(getStringAvailable(available));
             }
             enteredNum = askInt();
             scanner.nextLine();
 
             if (enteredNum == 99 && isFirstTurn()) {
                 System.out.println("Can't pass on the first turn");
-                System.out.println(getStringAvailable());
+                System.out.println(getStringAvailable(available));
             } else if (enteredNum == 99 || enteredNum <= available.length) {
                 break;
             } else {
                 System.out.println("Try that again");
-                System.out.println(getStringAvailable());
+                System.out.println(getStringAvailable(available));
             }
         }
         return enteredNum;
     }
 
 
-    private String getStringAvailable() {
+    private String getStringAvailable(int[] available) {
         //TODO remove useage of getAvailable
         StringBuilder txt = new StringBuilder("What card would you like to play\n");
-        for (int i = 0; i < getAvailableCards().length; i++) {
-            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(getAvailableCards()[i]).toString(true)).append("\t");
+        for (int i = 0; i < available.length; i++) {
+            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(available[i]).toString(true)).append("\t");
         }
         return txt.toString();
     }
@@ -270,36 +285,36 @@ public class Killer {
      *
      * @return int array with indices
      */
-    private int[] getAvailableCards() {
-        ArrayList<Integer> pairIndices = new ArrayList<>();
+    protected int[] getAvailableCards() {
+        ArrayList<Integer> available = new ArrayList<>();
 
         if (roundState == lastState.PAIR) {
-            return getCardPairIndices();
+            return getPairIndices();
+        }
+
+        if (roundState == lastState.TRIPLE) {
+            return getTripleIndices();
         }
 
         // For playing single cards
         for (int i = 0; i < getHandSize(); i++) {
             Card c = getPlayerCard(i);
-            if (roundState == lastState.TRIPLE) {
-                return getTriplePairIndices();
-            } else {
-                // Check if c is a greater card
-                boolean isBigger = compareCards(c, lastCard);
-                if (isBigger) {
-                    pairIndices.add(i);
-                }
+            // Check if c is a greater card
+            boolean isBigger = compareCards(c, lastCard);
+            if (isBigger) {
+                available.add(i);
             }
         }
 
-        return pairIndices.stream().mapToInt(i -> i).toArray();
+        return available.stream().mapToInt(i -> i).toArray();
     }
 
-    private int[] getCardPairIndices() {
+    protected int[] getPairIndices() {
         ArrayList<Integer> pairValues = getValues(2);
         return getIndicesOfValues(pairValues);
     }
 
-    private int[] getTriplePairIndices() {
+    protected int[] getTripleIndices() {
         ArrayList<Integer> tripleValues = getValues(3);
         return  getIndicesOfValues(tripleValues);
     }
@@ -309,7 +324,7 @@ public class Killer {
      * @param occurences Minimum occurences that a value must appear in players hand
      * @return List of values that are acceptable
      */
-    private ArrayList<Integer> getValues(int occurences) {
+    protected ArrayList<Integer> getValues(int occurences) {
         //TODO make sure this also checks that card values are greater than last played card
         HashMap<Integer, Integer> valueCount = new HashMap<>();
         // Populate hashmap with each values number of occurences
@@ -344,6 +359,20 @@ public class Killer {
         }
         return indices.stream().mapToInt(i -> i).toArray();
     }
+
+    private int[] getIndicesOfValues(int value) {
+        ArrayList<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < whoPlaying.getHand().getSize(); i++) {
+            int currentValue = whoPlaying.getHand().peek(i).getValue();
+            if (currentValue == value) {
+                indices.add(i);
+            }
+
+        }
+        return indices.stream().mapToInt(i -> i).toArray();
+    }
+
+
 
     private boolean compareCards(Card c, Card c2) {
         if (c2 == null) {

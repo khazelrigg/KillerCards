@@ -28,6 +28,7 @@ public class TienLen {
         Deck reg52 = new Deck();
         reg52.shuffleCards();
 
+        // Continue to rotate players and give a card from shuffled deck
         while (reg52.getSize() != 0) {
             for (Player player : players) {
                 player.addCard(reg52.drawCard());
@@ -36,7 +37,7 @@ public class TienLen {
     }
 
     public void play() {
-        getFirstPlayer();
+        setupPlayers();
         whoPlaying = players[0];
         while (true) {
             for (Player player : players) {
@@ -60,6 +61,7 @@ public class TienLen {
     private void nextRound() {
         setupRound();
         askRoundState();
+        takeTurn(whoPlaying);
     }
 
     private void setupRound() {
@@ -80,6 +82,10 @@ public class TienLen {
         playedDeck.addCard(new Card(3, Card.Suit.SPADES));
         lastCard = playedDeck.peek(0);
         askRoundState();
+        if (roundState == lastState.SINGLE) {
+            return;
+        }
+        takeTurn(whoPlaying);
     }
 
     private void takeTurn(Player player) {
@@ -119,10 +125,12 @@ public class TienLen {
                 roundState = lastState.RUN;
                 break;
         }
-
     }
 
-    private void getFirstPlayer() {
+    /**
+     * Organises the players array by moving player with 3 of spades to index 0
+     */
+    private void setupPlayers() {
         Player first = players[0];
         for (int p = 0; p < players.length; p++) {
             for (int i = 0; i < players[p].getHand().getSize(); i++) {
@@ -139,6 +147,9 @@ public class TienLen {
         setPlayerNums();
     }
 
+    /**
+     * Prints the current turn information, also displays played deck and players hand
+     */
     private void printTurnInfo() {
         System.out.println("\n=====================[ Turn " + (turnCount + 1) + " - (P" + whoPlaying.getPlayerNum() + ") ]=====================");
         if (playedDeck.getSize() > 0) {
@@ -147,6 +158,9 @@ public class TienLen {
         System.out.println("Your Hand: " + getDeckString(whoPlaying.getHand()) + "\t\t | Size: " + whoPlaying.getHand().getSize());
     }
 
+    /**
+     * Determines which method should be used for a player to play their cards
+     */
     private void playCards() {
         switch (roundState) {
             case SINGLE:
@@ -179,9 +193,14 @@ public class TienLen {
     private void playPair() {
         //TODO redo this section to allow selection of a value opposed to selecting individual cards
         int[] availableCards = getAvailableCards();
+        /*
+         First turn is a special exception, player will have automatically played the 3 of spades so
+         it is only necessary to display cards with a value of 3 and only play one
+          */
         if (isFirstTurn()) {
             availableCards = getIndicesOfValues(3);
             Card card = chooseCard(availableCards);
+
             if (card != null) {
                 playedDeck.addCard(card);
                 lastCard = card;
@@ -194,8 +213,13 @@ public class TienLen {
             playedDeck.addCard(card1);
             lastCard = card1;
         }
+        // If card is null, player must have chosen to skip
+        if (card1 == null) {
+            return;
+        }
 
         availableCards = getIndicesOfValues(card1.getValue());
+        System.out.println("AVailaible: "+ Arrays.toString(availableCards));
         // card2 is card with same value
         Card card2 = chooseCard(availableCards);
         if (card2 != null) {
@@ -206,24 +230,50 @@ public class TienLen {
 
     private void playTriple() {
         int[] availableCards = getAvailableCards();
-        System.out.println("TRIPLES AVAILABLE - " + Arrays.toString(availableCards));
+
+        if (isFirstTurn()) {
+            /*
+            First turn is exception, cards must have value of 3 and only two need to be selected by
+            player
+             */
+            availableCards = getIndicesOfValues(3);
+            Card card1 = chooseCard(availableCards);
+            if (card1 != null) {
+                playedDeck.addCard(card1);
+                lastCard = card1;
+            }
+
+            availableCards = getIndicesOfValues(3);
+            // card2 is card with same value
+            Card card2 = chooseCard(availableCards);
+            if (card2 != null) {
+                playedDeck.addCard(card2);
+                lastCard = card2;
+            }
+            return;
+        }
+
         for (int i = 0; i < 3; i++) {
             Card card = chooseCard(availableCards);
             if (card != null) {
                 playedDeck.addCard(card);
                 lastCard = card;
+                // Make sure to reset available cards in order to remove any cards that were just played
+                availableCards = getIndicesOfValues(card.getValue());
             }
         }
     }
 
     private void playRun() {
-
+        //TODO implement runs
     }
 
     /**
-     * Present the player with a list of cards to play
+     * Handles the prompting of a list of cards the player can play
      *
-     * @return Card they choose
+     * @param available Indices of available cards
+     * @return Card chosen by the player
+     * @see #promptForCard(int[])
      */
     private Card chooseCard(int[] available) {
         if (whoPlaying.getState() == Player.playerState.PASS) {
@@ -235,7 +285,7 @@ public class TienLen {
         }
 
         int enteredNum = promptForCard(available);
-        boolean isSure = askVerifyTurnSelection(enteredNum);
+        boolean isSure = verifyCardSelection(enteredNum, available);
 
         if (isSure) {
             return whoPlaying.getHand().drawCard(available[enteredNum - 1]);
@@ -245,6 +295,11 @@ public class TienLen {
         return null;
     }
 
+    /**
+     * Prompts the player with all available cards in their hand and asks for a selection
+     * @param available Indices of available cards
+     * @return Return the number the player selected from prompt
+     */
     private int promptForCard(int[] available) {
         int enteredNum;
 
@@ -270,12 +325,19 @@ public class TienLen {
         return enteredNum;
     }
 
-
+    /**
+     * Creates a string of the players hand, prefaces each card with a number for use in prompt
+     *
+     * @param available Indices of available cards
+     * @return String of players hand that filtered out unplayable cards
+     */
     private String getStringAvailable(int[] available) {
-        //TODO remove useage of getAvailable
         StringBuilder txt = new StringBuilder("What card would you like to play\n");
         for (int i = 0; i < available.length; i++) {
-            txt.append("(").append(i + 1).append(") ").append(whoPlaying.getHand().peek(available[i]).toString(true)).append("\t");
+            String card = whoPlaying.getHand().peek(available[i]).toString(true);
+
+            txt.append("(").append(i + 1).append(") ")
+                    .append(card).append("\t");
         }
         return txt.toString();
     }
@@ -283,7 +345,7 @@ public class TienLen {
     /**
      * Get a list of card indices that the player can play
      *
-     * @return int array with indices
+     * @return Array with indices of all playable cards
      */
     protected int[] getAvailableCards() {
         ArrayList<Integer> available = new ArrayList<>();
@@ -320,14 +382,15 @@ public class TienLen {
     }
 
     /**
-     * Finds values in the players hand that appear at least n times
-     * @param occurences Minimum occurences that a value must appear in players hand
-     * @return List of values that are acceptable
+     * Finds values in the players hand that appear at least so many times
+     * @param occurrences Minimum occurrences that a value must appear in players hand to be returned
+     * @return List of card values that are acceptable
+     * @see #getIndicesOfValues(ArrayList) as these methods are used together
      */
-    protected ArrayList<Integer> getValues(int occurences) {
+    protected ArrayList<Integer> getValues(int occurrences) {
         //TODO make sure this also checks that card values are greater than last played card
         HashMap<Integer, Integer> valueCount = new HashMap<>();
-        // Populate hashmap with each values number of occurences
+        // Populate hashmap with each values number of occurrences
         for (Card card : whoPlaying.getCards()) {
             int val = card.getValue();
             if (valueCount.containsKey(val)) {
@@ -337,16 +400,22 @@ public class TienLen {
             }
         }
 
-        // Add valid values with at least n occurences
+        // Add valid values with at least n occurrences
         ArrayList<Integer> acceptableValues = new ArrayList<>();
         valueCount.forEach((k, v) -> {
-            if (v >= occurences) {
+            if (v >= occurrences) {
                 acceptableValues.add(k);
             }
         });
         return acceptableValues;
     }
 
+    /**
+     * Searches through the players hand looking for cards with certain values
+     *
+     * @param values List of values to search for
+     * @return Array of card indices that have a value specified in values
+     */
     private int[] getIndicesOfValues(ArrayList<Integer> values) {
         ArrayList<Integer> indices = new ArrayList<>();
 
@@ -418,6 +487,10 @@ public class TienLen {
         }
     }
 
+    /**
+     * Handles prompting of user for an integer
+     * @return Integer the user entered
+     */
     private int askInt() {
         int number;
         do {
@@ -431,6 +504,11 @@ public class TienLen {
         return number;
     }
 
+    /**
+     * Forces user to enter a valid round selection
+     * @return Char the user entered
+     * @see #askRoundState()
+     */
     private char promptRoundSelection() {
         String acceptable = "sptr";
         while (true) {
@@ -445,7 +523,7 @@ public class TienLen {
         }
     }
 
-    private boolean askVerifyTurnSelection(int num) {
+    private boolean verifyCardSelection(int num, int[] available) {
         boolean doubleCheck;
 
         if (num == 99) {
@@ -456,7 +534,7 @@ public class TienLen {
             }
         } else {
             doubleCheck = askYesNo("Are you sure you want to play your "
-                    + whoPlaying.getHand().peek(getAvailableCards()[num - 1]).toString(true));
+                    + whoPlaying.getHand().peek(available[num - 1]).toString(true));
         }
         return doubleCheck;
     }

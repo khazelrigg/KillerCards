@@ -43,7 +43,7 @@ public class Player {
     }
 
     public boolean handContains(Card c) {
-        for (Card card : hand.getDeck()) {
+        for (Card card : hand.getCards()) {
             if (card == c) return true;
         }
         return false;
@@ -54,7 +54,7 @@ public class Player {
     }
 
     public ArrayList<Card> getCards() {
-        return hand.getDeck();
+        return hand.getCards();
     }
 
 }

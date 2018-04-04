@@ -6,9 +6,11 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TienLenTest {
+
     private static TienLen testGame = new TienLen();
 
     @BeforeEach
@@ -51,7 +53,6 @@ class TienLenTest {
         testGame.roundState = TienLen.lastState.SINGLE;
         testGame.lastCard = new Card(6, Card.Suit.SPADES);
         int[] available = testGame.getAvailableCards();
-        System.out.println(Arrays.toString(available));
         int[] expectedIndices = {0, 3, 6};
         assertTrue(Arrays.equals(available, expectedIndices));
     }
@@ -72,6 +73,71 @@ class TienLenTest {
         int[] expectedTripleIndices = {2, 4, 5};
         assertTrue(Arrays.equals(available, expectedTripleIndices));
     }
+
+    @Test
+    void winsWith4Twos() {
+        testGame.whoPlaying.getHand().empty();
+        testGame.whoPlaying.getHand().addAllCards(
+                new Card(2, Card.Suit.SPADES),
+                new Card(2, Card.Suit.DIAMONDS),
+                new Card(2, Card.Suit.CLUBS),
+                new Card(2, Card.Suit.HEARTS));
+        assertTrue(testGame.checkInstantWin());
+    }
+
+    @Test
+    void winsWithSixPairs() {
+        testGame.whoPlaying.getHand().empty();
+        testGame.whoPlaying.getHand().addAllCards(
+                new Card(3, Card.Suit.SPADES),
+                new Card(3, Card.Suit.HEARTS),
+                new Card(4, Card.Suit.SPADES),
+                new Card(4, Card.Suit.SPADES),
+                new Card(5, Card.Suit.SPADES),
+                new Card(5, Card.Suit.SPADES),
+                new Card(6, Card.Suit.SPADES),
+                new Card(6, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES),
+                new Card(8, Card.Suit.SPADES),
+                new Card(8, Card.Suit.SPADES));
+        assertTrue(testGame.checkInstantWin());
+    }
+
+    @Test
+    void winsWithFiveConsecutivePairs() {
+        testGame.whoPlaying.getHand().empty();
+        testGame.whoPlaying.getHand().addAllCards(
+                new Card(3, Card.Suit.SPADES),
+                new Card(3, Card.Suit.HEARTS),
+                new Card(5, Card.Suit.SPADES),
+                new Card(5, Card.Suit.SPADES),
+                new Card(4, Card.Suit.SPADES),
+                new Card(4, Card.Suit.SPADES),
+                new Card(6, Card.Suit.SPADES),
+                new Card(6, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES));
+        assertTrue(testGame.checkInstantWin());
+    }
+
+    @Test
+    void doesntWinWithFiveNonConsecutivePairs() {
+        testGame.whoPlaying.getHand().empty();
+        testGame.whoPlaying.getHand().addAllCards(
+                new Card(3, Card.Suit.SPADES),
+                new Card(3, Card.Suit.HEARTS),
+                new Card(4, Card.Suit.SPADES),
+                new Card(4, Card.Suit.SPADES),
+                new Card(5, Card.Suit.SPADES),
+                new Card(5, Card.Suit.SPADES),
+                new Card(9, Card.Suit.SPADES),
+                new Card(9, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES),
+                new Card(7, Card.Suit.SPADES));
+        assertFalse(testGame.checkInstantWin());
+    }
+
 
     private void giveWhoPlayingCards() {
         testGame.whoPlaying.getHand().addAllCards(

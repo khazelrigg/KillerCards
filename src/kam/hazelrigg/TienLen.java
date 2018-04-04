@@ -7,6 +7,7 @@ import java.util.*;
 
 
 public class TienLen {
+
     private Scanner scanner = new Scanner(System.in);
     private int turnCount = 0;
     private int roundCount = 1;
@@ -47,6 +48,8 @@ public class TienLen {
                 if (player.getState() != Player.playerState.OUT && player.getState() != Player.playerState.PASS) {
                     whoPlaying = player;
                     takeTurn(player);
+                    if (isGameOver())
+                        break;
                 } else {
                     System.out.println("\nSkipping player " + player.getPlayerNum()
                             + "... Moving to next player (P" + (player.getPlayerNum() + 1) + ")");
@@ -219,8 +222,7 @@ public class TienLen {
         }
 
         availableCards = getIndicesOfValues(card1.getValue());
-        System.out.println("AVailaible: "+ Arrays.toString(availableCards));
-        // card2 is card with same value
+
         Card card2 = chooseCard(availableCards);
         if (card2 != null) {
             playedDeck.addCard(card2);
@@ -416,7 +418,7 @@ public class TienLen {
      * @param values List of values to search for
      * @return Array of card indices that have a value specified in values
      */
-    private int[] getIndicesOfValues(ArrayList<Integer> values) {
+    int[] getIndicesOfValues(ArrayList<Integer> values) {
         ArrayList<Integer> indices = new ArrayList<>();
 
         for (int index = 0; index < whoPlaying.getHand().getSize(); index++) {
@@ -429,7 +431,7 @@ public class TienLen {
         return indices.stream().mapToInt(i -> i).toArray();
     }
 
-    private int[] getIndicesOfValues(int value) {
+    int[] getIndicesOfValues(int value) {
         ArrayList<Integer> indices = new ArrayList<>();
         for (int i = 0; i < whoPlaying.getHand().getSize(); i++) {
             int currentValue = whoPlaying.getHand().peek(i).getValue();
@@ -547,7 +549,7 @@ public class TienLen {
 
     private String getDeckString(Deck d) {
         StringBuilder sb = new StringBuilder();
-        for (Card c : d.getDeck()) {
+        for (Card c : d.getCards()) {
             sb.append(c.toString(true)).append(" ");
         }
         return sb.toString();
@@ -567,6 +569,38 @@ public class TienLen {
             }
         }
 
+    }
+
+    boolean checkInstantWin() {
+        return hasFourTwos() || hasSixPairs() || hasFiveConsecutivePairs();
+    }
+
+    private boolean hasFourTwos() {
+        return getIndicesOfValues(2).length == 4;
+    }
+
+    private boolean hasSixPairs() {
+        return getPairIndices().length == 12;
+    }
+
+    private boolean hasFiveConsecutivePairs() {
+        ArrayList<Integer> values = getValues(2);
+        int sequenceLength = 0;
+
+        for (int i = 0; i < values.size() - 1; i++) {
+            if (values.get(i) + 1 == values.get(i + 1)) {
+                sequenceLength++;
+                continue;
+            }
+            // If sequence is broken
+            sequenceLength = 0;
+        }
+
+        // Check last two
+        if (values.get(values.size() - 2) + 1 == values.get(values.size() - 1)) {
+            sequenceLength++;
+        }
+        return sequenceLength >= 5;
     }
 
     private void setPlayerNums() {
@@ -592,7 +626,7 @@ public class TienLen {
 
     private void sortHand() {
         //https://stackoverflow.com/questions/2784514/sort-arraylist-of-custom-objects-by-property#2784576
-        whoPlaying.getHand().getDeck().sort(Comparator.comparing(Card::getValue));
+        whoPlaying.getHand().getCards().sort(Comparator.comparing(Card::getValue));
     }
 
     private boolean isFirstTurn() {
